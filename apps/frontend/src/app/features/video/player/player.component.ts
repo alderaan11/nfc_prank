@@ -16,7 +16,6 @@ export class PlayerComponent implements OnInit {
   video = signal<VideoDetail | null>(null);
   error = signal<string | null>(null);
   loading = signal(true);
-  // L'overlay est toujours visible jusqu'au premier tap (iOS + Android)
   needsTap = signal(false);
 
   constructor(private videoService: VideoService) {}
@@ -38,9 +37,25 @@ export class PlayerComponent implements OnInit {
   activateSound() {
     const vid = this.videoEl?.nativeElement;
     if (!vid) return;
+
     vid.muted = false;
     vid.volume = 1;
     if (vid.paused) vid.play();
     this.needsTap.set(false);
+
+    // Amplifie via Web Audio API (dépasse le volume système sur Android/Chrome)
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const source = ctx.createMediaElementSource(vid);
+      const gain = ctx.createGain();
+      gain.gain.value = 2.5;
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      ctx.resume();
+    } catch {
+      // Silencieux si le navigateur ne supporte pas (iOS Safari)
+    }
   }
 }
