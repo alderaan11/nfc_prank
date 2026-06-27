@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://your-backend.vercel.app',
+  apiUrl: 'https://nfc-prank-backend.vercel.app',
 };
