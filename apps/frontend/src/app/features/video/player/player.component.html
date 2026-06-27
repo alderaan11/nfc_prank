@@ -7,12 +7,12 @@
     <div class="error-screen">
       <p>{{ error() }}</p>
     </div>
-  } @else if (video(); as v) {
+  } @else if (video()) {
     <div class="player-container">
-      <h1 class="video-title">{{ v.title }}</h1>
+      <h1 class="video-title">{{ video()!.title }}</h1>
       <video
         class="video-element"
-        [src]="v.url"
+        [src]="video()!.url"
         controls
         autoplay
         playsinline
