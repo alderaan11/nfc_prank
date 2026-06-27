@@ -10,11 +10,9 @@
     "add-video": "node scripts/add-video.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1",
     "next": "15.5.19",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "zod": "^3.24.1"
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
     "@types/node": "^20",
