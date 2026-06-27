@@ -9,15 +9,19 @@
     </div>
   } @else if (video()) {
     <div class="player-container">
+      <!-- autoplay + muted requis pour iOS Safari, playsinline pour ne pas ouvrir le player natif -->
       <video
         #videoEl
         class="video-element"
         [src]="video()!.url"
+        autoplay
+        muted
         playsinline
         preload="auto"
-        (canplay)="onVideoReady()"
+        loop
       ></video>
 
+      <!-- Overlay transparent — premier tap active le son à fond -->
       @if (needsTap()) {
         <div class="tap-overlay" (click)="activateSound()"></div>
       }
