@@ -1,5 +1,5 @@
 {
-  "installCommand": "npm install --prefix=../..",
+  "installCommand": "cd ../.. && npm install",
   "buildCommand": "npx ng build --configuration production",
   "outputDirectory": "dist/frontend/browser",
   "framework": null,

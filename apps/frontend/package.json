@@ -23,6 +23,10 @@
     "tslib": "^2.3.0",
     "zone.js": "~0.14.10"
   },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.22.4",
+    "@rollup/rollup-linux-x64-musl": "4.22.4"
+  },
   "devDependencies": {
     "@angular-devkit/build-angular": "^18.2.21",
     "@angular/cli": "^18.2.21",
