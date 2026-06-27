@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { db } from "@/lib/db";
-import { deleteVideo } from "@/lib/blob";
-import { getVideoUrl } from "@/lib/blob";
+import { listVideos, getVideo } from "@/lib/videos-store";
 import { z } from "zod";
 
 function requireMcpToken(req: NextRequest): boolean {
@@ -17,47 +15,21 @@ function buildServer(): McpServer {
     version: "1.0.0",
   });
 
-  server.tool("list_videos", "List all uploaded videos", {}, async () => {
-    const videos = await db.video.findMany({
-      orderBy: { createdAt: "desc" },
-      select: { id: true, title: true, filename: true, size: true, createdAt: true },
-    });
+  server.tool("list_videos", "List all videos from videos.json", {}, async () => {
+    const videos = listVideos();
     return { content: [{ type: "text", text: JSON.stringify(videos, null, 2) }] };
   });
 
   server.tool(
     "get_video",
-    "Get metadata and streaming URL for a video by ID",
+    "Get a video by ID",
     { id: z.string().describe("Video ID") },
     async ({ id }) => {
-      const video = await db.video.findUnique({ where: { id } });
+      const video = getVideo(id);
       if (!video) {
         return { content: [{ type: "text", text: `Video ${id} not found` }], isError: true };
       }
-      const url = await getVideoUrl(video.blobKey);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({ ...video, url }, null, 2),
-          },
-        ],
-      };
-    }
-  );
-
-  server.tool(
-    "delete_video",
-    "Delete a video by ID",
-    { id: z.string().describe("Video ID") },
-    async ({ id }) => {
-      const video = await db.video.findUnique({ where: { id } });
-      if (!video) {
-        return { content: [{ type: "text", text: `Video ${id} not found` }], isError: true };
-      }
-      await deleteVideo(video.blobKey);
-      await db.video.delete({ where: { id } });
-      return { content: [{ type: "text", text: `Video ${id} deleted` }] };
+      return { content: [{ type: "text", text: JSON.stringify({ id, ...video }, null, 2) }] };
     }
   );
 
@@ -85,16 +57,14 @@ export async function POST(req: NextRequest) {
 
   await transport.handleRequest(req, new NextResponse(readable), body);
 
-  return new NextResponse(readable, {
-    headers: { "Content-Type": "application/json" },
-  });
+  return new NextResponse(readable, { headers: { "Content-Type": "application/json" } });
 }
 
 export async function GET() {
   return NextResponse.json({
     name: "nfc-prank-mcp",
     version: "1.0.0",
-    tools: ["list_videos", "get_video", "delete_video"],
+    tools: ["list_videos", "get_video"],
     transport: "streamable-http",
   });
 }

@@ -42,8 +42,9 @@ pnpm-debug.log*
 # Testing
 coverage/
 
-# Prisma
-apps/backend/prisma/migrations/
-
 # Angular cache
 apps/frontend/.angular/
+
+# Claude Code skills / agents (not project code)
+.agents/
+skills-lock.json
