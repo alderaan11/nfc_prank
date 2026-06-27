@@ -1,0 +1,39 @@
+<div class="login-page">
+  <div class="login-card">
+    <h1>Admin</h1>
+
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+
+    <form (ngSubmit)="submit()" #f="ngForm">
+      <div class="field">
+        <label for="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          name="email"
+          [(ngModel)]="email"
+          required
+          autocomplete="email"
+        />
+      </div>
+
+      <div class="field">
+        <label for="password">Mot de passe</label>
+        <input
+          id="password"
+          type="password"
+          name="password"
+          [(ngModel)]="password"
+          required
+          autocomplete="current-password"
+        />
+      </div>
+
+      <button type="submit" [disabled]="loading() || !f.valid">
+        {{ loading() ? 'Connexion...' : 'Se connecter' }}
+      </button>
+    </form>
+  </div>
+</div>

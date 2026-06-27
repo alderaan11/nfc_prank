@@ -1,0 +1,31 @@
+<div class="dashboard">
+  <header class="dashboard-header">
+    <h1>Mes vidéos NFC</h1>
+    <div class="actions">
+      <a routerLink="/admin/upload" class="btn-primary">+ Uploader</a>
+      <button class="btn-secondary" (click)="auth.logout()">Déconnexion</button>
+    </div>
+  </header>
+
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+
+  @if (loading()) {
+    <p class="loading">Chargement...</p>
+  } @else if (videos().length === 0) {
+    <div class="empty">
+      <p>Aucune vidéo. <a routerLink="/admin/upload">Uploader la première</a></p>
+    </div>
+  } @else {
+    <div class="video-grid">
+      @for (video of videos(); track video.id) {
+        <app-video-card
+          [video]="video"
+          (delete)="onDelete($event)"
+          (copyLink)="copyLink($event)"
+        />
+      }
+    </div>
+  }
+</div>
