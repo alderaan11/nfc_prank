@@ -7,16 +7,10 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
-    "lint": "turbo run lint",
-    "type-check": "turbo run type-check"
-  },
-  "devDependencies": {
-    "turbo": "^2.3.3"
+    "dev:backend": "npm run dev --workspace=apps/backend",
+    "dev:frontend": "npm run dev --workspace=apps/frontend"
   },
   "engines": {
     "node": ">=18"
-  },
-  "packageManager": "npm@10.9.2"
+  }
 }
