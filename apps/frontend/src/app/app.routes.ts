@@ -1,4 +1,8 @@
 import { Routes } from '@angular/router';
+import { Component } from '@angular/core';
+
+@Component({ standalone: true, template: '' })
+class EmptyComponent {}
 
 export const routes: Routes = [
   {
@@ -8,5 +12,5 @@ export const routes: Routes = [
         (m) => m.PlayerComponent
       ),
   },
-  { path: '**', redirectTo: 'v/not-found' },
+  { path: '**', component: EmptyComponent },
 ];
