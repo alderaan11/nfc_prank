@@ -1,10 +1,6 @@
 {
-  "example": {
-    "title": "Exemple de vidéo",
-    "url": "https://REMPLACE_PAR_URL_VERCEL_BLOB.mp4"
-  },
   "0ad42de5dc": {
     "title": "Tung Tung Tung Sahur",
-    "url": "BLOB_URL_PLACEHOLDER"
+    "url": "/videos/tung-tung.mp4"
   }
 }

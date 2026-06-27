@@ -22,8 +22,13 @@ export async function GET(
     );
   }
 
+  // Support relative paths — construit l'URL absolue depuis l'origine de la requête
+  const url = video.url.startsWith("/")
+    ? `${req.nextUrl.origin}${video.url}`
+    : video.url;
+
   return NextResponse.json(
-    { id, title: video.title, url: video.url },
+    { id, title: video.title, url },
     { headers: corsHeaders(origin) }
   );
 }
