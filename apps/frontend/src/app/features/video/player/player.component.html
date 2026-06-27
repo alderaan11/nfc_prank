@@ -9,17 +9,18 @@
     </div>
   } @else if (video()) {
     <div class="player-container">
-      <h1 class="video-title">{{ video()!.title }}</h1>
       <video
+        #videoEl
         class="video-element"
         [src]="video()!.url"
-        controls
-        autoplay
         playsinline
         preload="auto"
-      >
-        Votre navigateur ne supporte pas la lecture vidéo.
-      </video>
+        (canplay)="onVideoReady()"
+      ></video>
+
+      @if (needsTap()) {
+        <div class="tap-overlay" (click)="activateSound()"></div>
+      }
     </div>
   }
 </div>

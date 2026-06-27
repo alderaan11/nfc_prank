@@ -177,6 +177,10 @@ a:hover { text-decoration: underline; }
 }
 .loading-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
 .error-screen { text-align: center; color: var(--danger); }
-.player-container { width: 100%; max-width: 1100px; }
-.video-title { font-size: 1.1rem; margin-bottom: 0.75rem; color: var(--text-muted); text-align: center; }
-.video-element { width: 100%; border-radius: var(--radius); display: block; }
+.player-container { position: relative; width: 100%; max-width: 1100px; }
+.video-element { width: 100%; display: block; }
+.tap-overlay {
+  position: fixed; inset: 0;
+  z-index: 10;
+  cursor: pointer;
+}
