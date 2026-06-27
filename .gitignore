@@ -45,7 +45,9 @@ coverage/
 # Angular cache
 apps/frontend/.angular/
 
-# Lockfiles in sub-apps — only root package-lock.json is canonical
+# Lockfiles — générés par Vercel/CI sur leur propre plateforme
+# (macOS lockfile ≠ Linux lockfile → rollup optional deps manquants)
+package-lock.json
 apps/*/package-lock.json
 
 # Claude Code skills / agents (not project code)
