@@ -45,6 +45,9 @@ coverage/
 # Angular cache
 apps/frontend/.angular/
 
+# Lockfiles in sub-apps — only root package-lock.json is canonical
+apps/*/package-lock.json
+
 # Claude Code skills / agents (not project code)
 .agents/
 skills-lock.json
