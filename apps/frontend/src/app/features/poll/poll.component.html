@@ -1,0 +1,64 @@
+<div class="poll-page">
+  @if (state() === 'loading') {
+    <div class="loading-screen"><div class="spinner"></div></div>
+  } @else if (state() === 'vote') {
+    <div class="poll-container">
+      <h1 class="poll-title">{{ title() }}</h1>
+      <p class="poll-subtitle">Choisis ton top 3 dans l'ordre</p>
+
+      <div class="games-list">
+        @for (game of games(); track game) {
+          <button
+            class="game-card"
+            [class.selected]="rankOf(game) > 0"
+            [class.dimmed]="selected().length === 3 && rankOf(game) === 0"
+            (click)="toggle(game)"
+          >
+            <span class="game-name">{{ game }}</span>
+            @if (rankOf(game) > 0) {
+              <span class="rank-badge">{{ rankOf(game) }}</span>
+            }
+          </button>
+        }
+      </div>
+
+      <div class="poll-footer">
+        <p class="selection-hint">
+          @if (selected().length === 0) { Appuie sur 3 jeux pour voter }
+          @else if (selected().length < 3) { Plus que {{ 3 - selected().length }} choix }
+          @else { Prêt à voter ! }
+        </p>
+        @if (error()) {
+          <p class="error">{{ error() }}</p>
+        }
+        <button
+          class="btn-primary submit-btn"
+          [disabled]="selected().length !== 3 || submitting()"
+          (click)="submit()"
+        >
+          {{ submitting() ? 'Envoi...' : 'Voter' }}
+        </button>
+      </div>
+    </div>
+  } @else if (state() === 'results') {
+    <div class="poll-container">
+      <h1 class="poll-title">{{ title() }}</h1>
+      <p class="poll-subtitle">{{ totalVotes() }} vote{{ totalVotes() > 1 ? 's' : '' }} — classement provisoire</p>
+
+      <div class="results-list">
+        @for (result of results(); track result.game; let i = $index) {
+          <div class="result-row">
+            <span class="result-rank">{{ i + 1 }}</span>
+            <div class="result-info">
+              <div class="result-name">{{ result.game }}</div>
+              <div class="result-bar-wrap">
+                <div class="result-bar" [style.width.%]="widthOf(result)"></div>
+              </div>
+            </div>
+            <span class="result-points">{{ result.points }} pts</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

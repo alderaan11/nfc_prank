@@ -12,5 +12,10 @@ export const routes: Routes = [
         (m) => m.PlayerComponent
       ),
   },
+  {
+    path: 'poll',
+    loadComponent: () =>
+      import('./features/poll/poll.component').then((m) => m.PollComponent),
+  },
   { path: '**', component: EmptyComponent },
 ];
