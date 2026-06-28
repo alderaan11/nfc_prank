@@ -13,19 +13,31 @@ const TOKEN = process.env.BLOB_READ_WRITE_TOKEN ?? "";
 async function readVotes(): Promise<Vote[]> {
   try {
     const res = await fetch(
-      `https://blob.vercel-storage.com?prefix=${BLOB_PATHNAME}&limit=1`,
+      `https://blob.vercel-storage.com?prefix=${BLOB_PATHNAME}`,
       { headers: { Authorization: `Bearer ${TOKEN}` } }
     );
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error("[poll] list failed:", res.status, await res.text());
+      return [];
+    }
     const { blobs } = await res.json();
     if (!blobs || blobs.length === 0) return [];
 
-    const download = await fetch(blobs[0].downloadUrl, {
-      headers: { Authorization: `Bearer ${TOKEN}` },
-    });
-    if (!download.ok) return [];
+    // Prendre le blob le plus récent
+    const latest = blobs.sort(
+      (a: { uploadedAt: string }, b: { uploadedAt: string }) =>
+        new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+    )[0];
+
+    // downloadUrl des stores privés est pré-signé — pas besoin de Bearer token
+    const download = await fetch(latest.downloadUrl);
+    if (!download.ok) {
+      console.error("[poll] download failed:", download.status, latest.downloadUrl);
+      return [];
+    }
     return await download.json();
-  } catch {
+  } catch (e) {
+    console.error("[poll] readVotes error:", e);
     return [];
   }
 }
