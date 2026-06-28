@@ -38,11 +38,13 @@ async function readVotes(): Promise<Vote[]> {
 }
 
 async function writeVotes(votes: Vote[]): Promise<void> {
-  const res = await fetch(blobApiUrl(BLOB_PATHNAME), {
+  const url = `${blobApiUrl(BLOB_PATHNAME)}?access=private&addRandomSuffix=0`;
+  const res = await fetch(url, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${TOKEN}`,
       "x-api-version": "7",
+      "x-access": "private",
       "x-add-random-suffix": "0",
       "content-type": "application/json",
     },
