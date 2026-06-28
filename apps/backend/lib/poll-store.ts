@@ -24,7 +24,7 @@ async function readVotes(): Promise<Vote[]> {
 
 async function writeVotes(votes: Vote[]): Promise<void> {
   await put(BLOB_PATH, JSON.stringify(votes), {
-    access: "public",
+    access: "private",
     addRandomSuffix: false,
   });
 }
