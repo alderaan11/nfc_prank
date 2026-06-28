@@ -1,4 +1,4 @@
-import { kv } from "@vercel/kv";
+import { put, list } from "@vercel/blob";
 
 export interface Vote {
   choices: [string, string, string];
@@ -9,17 +9,34 @@ export interface GameResult {
   points: number;
 }
 
-const VOTES_KEY = "poll:votes";
+const BLOB_PATH = "poll-votes.json";
+
+async function readVotes(): Promise<Vote[]> {
+  try {
+    const { blobs } = await list({ prefix: BLOB_PATH });
+    if (blobs.length === 0) return [];
+    const res = await fetch(blobs[0].downloadUrl);
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+async function writeVotes(votes: Vote[]): Promise<void> {
+  await put(BLOB_PATH, JSON.stringify(votes), {
+    access: "public",
+    addRandomSuffix: false,
+  });
+}
 
 export async function addVote(vote: Vote): Promise<void> {
-  await kv.rpush(VOTES_KEY, JSON.stringify(vote));
+  const votes = await readVotes();
+  votes.push(vote);
+  await writeVotes(votes);
 }
 
 export async function getResults(games: string[]): Promise<GameResult[]> {
-  const rawVotes = await kv.lrange<string>(VOTES_KEY, 0, -1);
-  const votes: Vote[] = rawVotes.map((v) =>
-    typeof v === "string" ? JSON.parse(v) : v
-  );
+  const votes = await readVotes();
 
   const scores: Record<string, number> = Object.fromEntries(
     games.map((g) => [g, 0])
@@ -37,5 +54,6 @@ export async function getResults(games: string[]): Promise<GameResult[]> {
 }
 
 export async function getVoteCount(): Promise<number> {
-  return kv.llen(VOTES_KEY);
+  const votes = await readVotes();
+  return votes.length;
 }
