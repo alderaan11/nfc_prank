@@ -17,7 +17,7 @@ export class PollComponent implements OnInit {
   selected = signal<string[]>([]);
   results = signal<GameResult[]>([]);
   totalVotes = signal(0);
-  state = signal<'loading' | 'vote' | 'results'>('loading');
+  state = signal<'loading' | 'vote' | 'results' | 'error'>('loading');
   submitting = signal(false);
   error = signal<string | null>(null);
 
@@ -36,7 +36,10 @@ export class PollComponent implements OnInit {
         this.games.set(data.games);
         this.state.set('vote');
       },
-      error: () => this.state.set('vote'),
+      error: (err) => {
+        this.error.set(`Erreur API: ${err?.status ?? 0} ${err?.message ?? ''}`);
+        this.state.set('error');
+      },
     });
   }
 

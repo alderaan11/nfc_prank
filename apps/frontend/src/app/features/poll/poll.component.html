@@ -1,6 +1,8 @@
 <div class="poll-page">
   @if (state() === 'loading') {
     <div class="loading-screen"><div class="spinner"></div></div>
+  } @else if (state() === 'error') {
+    <div class="error-screen"><p>{{ error() }}</p></div>
   } @else if (state() === 'vote') {
     <div class="poll-container">
       <h1 class="poll-title">{{ title() }}</h1>
