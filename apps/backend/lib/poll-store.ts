@@ -9,15 +9,9 @@ export interface GameResult {
 
 const BLOB_PATHNAME = "poll-votes.json";
 const TOKEN = process.env.BLOB_READ_WRITE_TOKEN ?? "";
-const STORE_ID = TOKEN.split("_")[3]; // extrait l'ID du store depuis le token
-
-function blobApiUrl(path: string) {
-  return `https://blob.vercel-storage.com/${path}`;
-}
 
 async function readVotes(): Promise<Vote[]> {
   try {
-    // Lister les blobs pour trouver l'URL courante
     const res = await fetch(
       `https://blob.vercel-storage.com?prefix=${BLOB_PATHNAME}&limit=1`,
       { headers: { Authorization: `Bearer ${TOKEN}` } }
@@ -26,7 +20,6 @@ async function readVotes(): Promise<Vote[]> {
     const { blobs } = await res.json();
     if (!blobs || blobs.length === 0) return [];
 
-    // Lire le contenu avec auth
     const download = await fetch(blobs[0].downloadUrl, {
       headers: { Authorization: `Bearer ${TOKEN}` },
     });
@@ -38,18 +31,21 @@ async function readVotes(): Promise<Vote[]> {
 }
 
 async function writeVotes(votes: Vote[]): Promise<void> {
-  const url = `${blobApiUrl(BLOB_PATHNAME)}?access=private&addRandomSuffix=0`;
-  const res = await fetch(url, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${TOKEN}`,
-      "x-api-version": "7",
-      "x-access": "private",
-      "x-add-random-suffix": "0",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(votes),
-  });
+  const res = await fetch(
+    `https://blob.vercel-storage.com/${BLOB_PATHNAME}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${TOKEN}`,
+        "x-api-version": "7",
+        "x-vercel-blob-access": "private",
+        "x-add-random-suffix": "0",
+        "x-allow-overwrite": "1",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(votes),
+    }
+  );
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Blob write failed: ${res.status} ${text}`);
