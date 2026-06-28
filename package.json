@@ -8,7 +8,9 @@
   ],
   "scripts": {
     "dev:backend": "npm run dev --workspace=apps/backend",
-    "dev:frontend": "npm run dev --workspace=apps/frontend"
+    "dev:frontend": "npm run dev --workspace=apps/frontend",
+    "check": "npm run type-check --workspace=apps/backend && npm run type-check --workspace=apps/frontend && npm test --workspace=apps/backend",
+    "setup-hooks": "git config core.hooksPath .githooks"
   },
   "engines": {
     "node": ">=18"

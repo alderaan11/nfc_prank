@@ -53,3 +53,5 @@ apps/*/package-lock.json
 # Claude Code skills / agents (not project code)
 .agents/
 skills-lock.json
+.vercel
+.env*
