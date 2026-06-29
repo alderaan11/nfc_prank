@@ -13,6 +13,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'r',
+    loadComponent: () =>
+      import('./features/media/random.component').then(
+        (m) => m.RandomMediaComponent
+      ),
+  },
+  {
     path: 'poll',
     loadComponent: () =>
       import('./features/poll/poll.component').then((m) => m.PollComponent),

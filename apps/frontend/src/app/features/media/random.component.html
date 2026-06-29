@@ -1,0 +1,39 @@
+<div class="player-page">
+  @if (loading()) {
+    <div class="loading-screen">
+      <div class="spinner"></div>
+    </div>
+  } @else if (error()) {
+    <div class="error-screen">
+      <p>{{ error() }}</p>
+    </div>
+  } @else if (media()) {
+    <div class="player-container">
+
+      @if (media()!.type === 'video') {
+        <video
+          #videoEl
+          class="video-element"
+          [src]="media()!.url"
+          autoplay
+          muted
+          playsinline
+          preload="auto"
+          loop
+        ></video>
+        @if (needsTap()) {
+          <div class="tap-overlay" (click)="activateSound()"></div>
+        }
+      }
+
+      @if (media()!.type === 'image') {
+        <img
+          class="media-image"
+          [src]="media()!.url"
+          [alt]="media()!.name"
+        />
+      }
+
+    </div>
+  }
+</div>

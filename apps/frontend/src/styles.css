@@ -240,3 +240,7 @@ a:hover { text-decoration: underline; }
   z-index: 10;
   cursor: pointer;
 }
+.media-image {
+  width: 100%; display: block; border-radius: 4px;
+  object-fit: contain; max-height: 100vh;
+}

@@ -8,7 +8,8 @@
     "start": "next start --port 3001",
     "type-check": "tsc --noEmit",
     "test": "jest",
-    "add-video": "node scripts/add-video.js"
+    "add-video": "node scripts/add-video.js",
+    "add-media": "node scripts/add-media.js"
   },
   "dependencies": {
     "@vercel/blob": "^2.5.0",
