@@ -1,4 +1,6 @@
-import { Component, OnInit, signal, ElementRef, ViewChild } from '@angular/core';
+import {
+  Component, OnInit, OnDestroy, signal, ElementRef, inject
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
@@ -15,22 +17,28 @@ interface MediaResponse {
   imports: [CommonModule],
   templateUrl: './random.component.html',
 })
-export class RandomMediaComponent implements OnInit {
-  @ViewChild('videoEl') videoEl!: ElementRef<HTMLVideoElement>;
+export class RandomMediaComponent implements OnInit, OnDestroy {
+  private http = inject(HttpClient);
+  private el = inject(ElementRef);
 
   media = signal<MediaResponse | null>(null);
   error = signal<string | null>(null);
   loading = signal(true);
   needsTap = signal(false);
 
-  constructor(private http: HttpClient) {}
+  private clickHandler = () => this.activateSound();
 
   ngOnInit() {
     this.http.get<MediaResponse>(`${environment.apiUrl}/api/media/random`).subscribe({
       next: (m) => {
         this.media.set(m);
         this.loading.set(false);
-        if (m.type === 'video') this.needsTap.set(true);
+        if (m.type === 'video') {
+          this.needsTap.set(true);
+          // Un seul tap sur n'importe quel endroit de l'écran suffit
+          document.addEventListener('click', this.clickHandler, { once: true });
+          document.addEventListener('touchstart', this.clickHandler, { once: true });
+        }
       },
       error: () => {
         this.error.set('Média introuvable');
@@ -39,15 +47,22 @@ export class RandomMediaComponent implements OnInit {
     });
   }
 
-  activateSound() {
-    const vid = this.videoEl?.nativeElement;
+  ngOnDestroy() {
+    document.removeEventListener('click', this.clickHandler);
+    document.removeEventListener('touchstart', this.clickHandler);
+  }
+
+  private activateSound() {
+    this.needsTap.set(false);
+
+    const vid = this.el.nativeElement.querySelector('video') as HTMLVideoElement | null;
     if (!vid) return;
 
     vid.muted = false;
     vid.volume = 1;
     if (vid.paused) vid.play();
-    this.needsTap.set(false);
 
+    // Amplifie via Web Audio API (dépasse le volume système sur Android/Chrome)
     try {
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioContext) return;

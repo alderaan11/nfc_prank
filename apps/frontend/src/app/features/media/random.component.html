@@ -12,7 +12,6 @@
 
       @if (media()!.type === 'video') {
         <video
-          #videoEl
           class="video-element"
           [src]="media()!.url"
           autoplay
@@ -21,8 +20,9 @@
           preload="auto"
           loop
         ></video>
+        <!-- Overlay transparent plein-écran — le premier tap n'importe où active le son -->
         @if (needsTap()) {
-          <div class="tap-overlay" (click)="activateSound()"></div>
+          <div class="tap-overlay"></div>
         }
       }
 
