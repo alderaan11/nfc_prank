@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   const h = new Headers(corsHeaders(origin));
   h.set("content-type", upstream.headers.get("content-type") ?? "application/octet-stream");
-  h.set("cache-control", "private, max-age=3600");
+  h.set("cache-control", "no-store");
   h.set("accept-ranges", "bytes");
 
   const contentLength = upstream.headers.get("content-length");

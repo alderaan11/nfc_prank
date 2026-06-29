@@ -9,12 +9,18 @@ export async function OPTIONS(req: NextRequest) {
   return optionsResponse(req.headers.get("origin"));
 }
 
+// Force dynamic — jamais de cache Next.js sur cet endpoint
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin");
 
   const res = await fetch(
     `https://blob.vercel-storage.com?prefix=${MEDIA_PREFIX}&limit=1000`,
-    { headers: { Authorization: `Bearer ${TOKEN}` } }
+    {
+      headers: { Authorization: `Bearer ${TOKEN}` },
+      cache: "no-store",
+    }
   );
 
   if (!res.ok) {
@@ -44,8 +50,6 @@ export async function GET(req: NextRequest) {
   // Proxy via /api/media/serve — le Bearer token ne sort jamais côté client
   const serveUrl = `${req.nextUrl.origin}/api/media/serve?url=${encodeURIComponent(blob.url)}`;
 
-  return NextResponse.json(
-    { type, url: serveUrl, name },
-    { headers: corsHeaders(origin) }
-  );
+  const headers = { ...corsHeaders(origin), "cache-control": "no-store" };
+  return NextResponse.json({ type, url: serveUrl, name }, { headers });
 }
