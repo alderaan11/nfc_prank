@@ -31,7 +31,10 @@ function jsonrpcError(id: unknown, code: number, message: string) {
   return NextResponse.json({ jsonrpc: "2.0", id, error: { code, message } });
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  if (!requireMcpToken(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   return NextResponse.json({
     name: "nfc-prank-mcp",
     version: "1.0.0",

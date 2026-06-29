@@ -19,8 +19,8 @@
           playsinline
           preload="auto"
           loop
+          (error)="onMediaError()"
         ></video>
-        <!-- Overlay transparent plein-écran — le premier tap n'importe où active le son -->
         @if (needsTap()) {
           <div class="tap-overlay"></div>
         }
@@ -31,6 +31,7 @@
           class="media-image"
           [src]="media()!.url"
           [alt]="media()!.name"
+          (error)="onMediaError()"
         />
       }
 

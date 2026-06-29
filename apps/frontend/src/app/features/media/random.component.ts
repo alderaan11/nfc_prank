@@ -11,6 +11,8 @@ interface MediaResponse {
   name: string;
 }
 
+const MAX_RETRIES = 3;
+
 @Component({
   selector: 'app-random-media',
   standalone: true,
@@ -20,6 +22,7 @@ interface MediaResponse {
 export class RandomMediaComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private el = inject(ElementRef);
+  private retries = 0;
 
   media = signal<MediaResponse | null>(null);
   error = signal<string | null>(null);
@@ -29,24 +32,7 @@ export class RandomMediaComponent implements OnInit, OnDestroy {
   private clickHandler = () => this.activateSound();
 
   ngOnInit() {
-    // _t = cache-bust : chaque chargement de page génère une URL unique
-    const url = `${environment.apiUrl}/api/media/random?_t=${Date.now()}`;
-    this.http.get<MediaResponse>(url).subscribe({
-      next: (m) => {
-        this.media.set(m);
-        this.loading.set(false);
-        if (m.type === 'video') {
-          this.needsTap.set(true);
-          // Un seul tap sur n'importe quel endroit de l'écran suffit
-          document.addEventListener('click', this.clickHandler, { once: true });
-          document.addEventListener('touchstart', this.clickHandler, { once: true });
-        }
-      },
-      error: () => {
-        this.error.set('Média introuvable');
-        this.loading.set(false);
-      },
-    });
+    this.loadRandom();
   }
 
   ngOnDestroy() {
@@ -54,17 +40,53 @@ export class RandomMediaComponent implements OnInit, OnDestroy {
     document.removeEventListener('touchstart', this.clickHandler);
   }
 
-  private activateSound() {
+  loadRandom() {
+    this.loading.set(true);
+    this.error.set(null);
+    this.media.set(null);
     this.needsTap.set(false);
 
+    const url = `${environment.apiUrl}/api/media/random?_t=${Date.now()}`;
+    this.http.get<MediaResponse>(url).subscribe({
+      next: (m) => {
+        this.media.set(m);
+        this.loading.set(false);
+        if (m.type === 'video') {
+          this.needsTap.set(true);
+          document.addEventListener('click', this.clickHandler, { once: true });
+          document.addEventListener('touchstart', this.clickHandler, { once: true });
+        }
+      },
+      error: () => {
+        if (this.retries < MAX_RETRIES) {
+          this.retries++;
+          setTimeout(() => this.loadRandom(), 800);
+        } else {
+          this.error.set('Média introuvable');
+          this.loading.set(false);
+        }
+      },
+    });
+  }
+
+  // Appelé si l'image ou la vidéo échoue à se charger (erreur proxy/réseau)
+  onMediaError() {
+    if (this.retries < MAX_RETRIES) {
+      this.retries++;
+      setTimeout(() => this.loadRandom(), 500);
+    } else {
+      this.error.set('Erreur de chargement');
+      this.loading.set(false);
+    }
+  }
+
+  private activateSound() {
+    this.needsTap.set(false);
     const vid = this.el.nativeElement.querySelector('video') as HTMLVideoElement | null;
     if (!vid) return;
-
     vid.muted = false;
     vid.volume = 1;
     if (vid.paused) vid.play();
-
-    // Amplifie via Web Audio API (dépasse le volume système sur Android/Chrome)
     try {
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioContext) return;
@@ -75,8 +97,6 @@ export class RandomMediaComponent implements OnInit, OnDestroy {
       source.connect(gain);
       gain.connect(ctx.destination);
       ctx.resume();
-    } catch {
-      // iOS Safari fallback silencieux
-    }
+    } catch { }
   }
 }
