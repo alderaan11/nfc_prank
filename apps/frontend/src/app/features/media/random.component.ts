@@ -29,7 +29,9 @@ export class RandomMediaComponent implements OnInit, OnDestroy {
   private clickHandler = () => this.activateSound();
 
   ngOnInit() {
-    this.http.get<MediaResponse>(`${environment.apiUrl}/api/media/random`).subscribe({
+    // _t = cache-bust : chaque chargement de page génère une URL unique
+    const url = `${environment.apiUrl}/api/media/random?_t=${Date.now()}`;
+    this.http.get<MediaResponse>(url).subscribe({
       next: (m) => {
         this.media.set(m);
         this.loading.set(false);
