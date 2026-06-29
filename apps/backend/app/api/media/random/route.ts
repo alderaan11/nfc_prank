@@ -1,7 +1,8 @@
+import { after } from "next/server";
 import { NextRequest, NextResponse } from "next/server";
 import { corsHeaders, optionsResponse } from "@/lib/cors";
 import { encryptMediaToken } from "@/lib/media-token";
-import { getAndIncrementIndex } from "@/lib/media-counter";
+import { readCounter, writeCounter } from "@/lib/media-counter";
 
 const TOKEN = process.env.BLOB_READ_WRITE_TOKEN ?? "";
 const MEDIA_PREFIX = "prank-media/";
@@ -9,7 +10,6 @@ const VIDEO_EXTS = new Set(["mp4", "webm", "mov", "avi"]);
 
 export const dynamic = "force-dynamic";
 
-// Cache en mémoire de la liste Blob (60s) — évite un listing API à chaque requête
 let blobListCache: { blobs: BlobEntry[]; ts: number } | null = null;
 const LIST_CACHE_TTL = 60_000;
 
@@ -30,7 +30,6 @@ async function getBlobs(): Promise<BlobEntry[]> {
   );
   if (!res.ok) throw new Error(`Blob list failed: ${res.status}`);
   const { blobs } = await res.json();
-  // Tri par date d'upload → les nouveaux médias arrivent en fin de boucle
   const sorted = (blobs ?? []).sort(
     (a: BlobEntry, b: BlobEntry) =>
       new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime()
@@ -46,11 +45,13 @@ export async function OPTIONS(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin");
 
+  // Lecture liste + compteur en parallèle — une seule requête Blob chacun
   let blobs: BlobEntry[];
+  let currentIndex: number;
   try {
-    blobs = await getBlobs();
+    [blobs, currentIndex] = await Promise.all([getBlobs(), readCounter()]);
   } catch (e) {
-    console.error("[media] list error:", e);
+    console.error("[media] init error:", e);
     return NextResponse.json(
       { error: "Could not list media" },
       { status: 502, headers: corsHeaders(origin) }
@@ -64,10 +65,13 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Compteur séquentiel — avance d'un cran à chaque visite, boucle sur la collection
-  const idx = await getAndIncrementIndex(blobs.length);
-  const blob = blobs[idx];
+  const safeIndex = currentIndex % blobs.length;
+  const nextIndex = (safeIndex + 1) % blobs.length;
 
+  // Écriture du nouveau compteur APRÈS l'envoi de la réponse — ne bloque pas
+  after(() => writeCounter(nextIndex).catch(console.error));
+
+  const blob = blobs[safeIndex];
   const ext = blob.pathname.split(".").pop()?.toLowerCase() ?? "";
   const type = VIDEO_EXTS.has(ext) ? "video" : "image";
   const name = blob.pathname

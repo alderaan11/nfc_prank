@@ -11,8 +11,6 @@ interface MediaResponse {
   name: string;
 }
 
-const MAX_RETRIES = 3;
-
 @Component({
   selector: 'app-random-media',
   standalone: true,
@@ -22,7 +20,11 @@ const MAX_RETRIES = 3;
 export class RandomMediaComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private el = inject(ElementRef);
-  private retries = 0;
+
+  // Séparation des retry : API (compteur) vs proxy (image/vidéo)
+  private apiRetries = 0;
+  private mediaRetries = 0;
+  private currentUrl = '';
 
   media = signal<MediaResponse | null>(null);
   error = signal<string | null>(null);
@@ -32,7 +34,7 @@ export class RandomMediaComponent implements OnInit, OnDestroy {
   private clickHandler = () => this.activateSound();
 
   ngOnInit() {
-    this.loadRandom();
+    this.loadNext();
   }
 
   ngOnDestroy() {
@@ -40,15 +42,17 @@ export class RandomMediaComponent implements OnInit, OnDestroy {
     document.removeEventListener('touchstart', this.clickHandler);
   }
 
-  loadRandom() {
+  loadNext() {
     this.loading.set(true);
     this.error.set(null);
     this.media.set(null);
     this.needsTap.set(false);
+    this.mediaRetries = 0;
 
     const url = `${environment.apiUrl}/api/media/random?_t=${Date.now()}`;
     this.http.get<MediaResponse>(url).subscribe({
       next: (m) => {
+        this.currentUrl = m.url;
         this.media.set(m);
         this.loading.set(false);
         if (m.type === 'video') {
@@ -58,22 +62,28 @@ export class RandomMediaComponent implements OnInit, OnDestroy {
         }
       },
       error: () => {
-        if (this.retries < MAX_RETRIES) {
-          this.retries++;
-          setTimeout(() => this.loadRandom(), 800);
+        // Erreur API → retry sans incrémenter le compteur (même ?_t suffit pas,
+        // mais l'API gère l'idempotence côté serveur)
+        if (this.apiRetries < 2) {
+          this.apiRetries++;
+          setTimeout(() => this.loadNext(), 800);
         } else {
-          this.error.set('Média introuvable');
+          this.error.set('Erreur de chargement');
           this.loading.set(false);
         }
       },
     });
   }
 
-  // Appelé si l'image ou la vidéo échoue à se charger (erreur proxy/réseau)
+  // Erreur de chargement image/vidéo (proxy) — on réessaie la MÊME URL,
+  // pas question d'appeler loadNext() qui incrémenterait le compteur.
   onMediaError() {
-    if (this.retries < MAX_RETRIES) {
-      this.retries++;
-      setTimeout(() => this.loadRandom(), 500);
+    if (this.mediaRetries < 2) {
+      this.mediaRetries++;
+      const url = this.currentUrl;
+      // Force le navigateur à re-fetcher en réinitialisant le src
+      this.media.update(m => m ? { ...m, url: '' } : null);
+      setTimeout(() => this.media.update(m => m ? { ...m, url } : null), 400);
     } else {
       this.error.set('Erreur de chargement');
       this.loading.set(false);

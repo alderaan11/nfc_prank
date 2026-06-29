@@ -1,63 +1,55 @@
-const COUNTER_PATH = "prank-counter.json";
+// Le compteur est encodé dans le pathname du blob : "prank-counter/42"
+// → pas besoin de télécharger le contenu, une seule requête list suffit à lire.
+// L'écriture se fait via next/server after() et ne bloque pas la réponse.
+
+const PREFIX = "prank-counter/";
 const TOKEN = process.env.BLOB_READ_WRITE_TOKEN ?? "";
 
-async function readCounter(): Promise<number> {
+export async function readCounter(): Promise<number> {
   const res = await fetch(
-    `https://blob.vercel-storage.com?prefix=${COUNTER_PATH}`,
+    `https://blob.vercel-storage.com?prefix=${PREFIX}&limit=20`,
     { headers: { Authorization: `Bearer ${TOKEN}` }, cache: "no-store" }
   );
   if (!res.ok) return 0;
   const { blobs } = await res.json();
   if (!blobs?.length) return 0;
 
-  const latest = blobs.sort(
-    (a: { uploadedAt: string }, b: { uploadedAt: string }) =>
-      new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+  const latest = (blobs as { pathname: string; uploadedAt: string }[]).sort(
+    (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
   )[0];
 
-  const dl = await fetch(latest.url, { headers: { Authorization: `Bearer ${TOKEN}` } });
-  if (!dl.ok) return 0;
-  const data = await dl.json();
-  return typeof data.index === "number" ? data.index : 0;
+  const num = parseInt(latest.pathname.replace(PREFIX, ""), 10);
+  return isNaN(num) ? 0 : num;
 }
 
-async function deleteCounterBlobs(): Promise<void> {
-  const res = await fetch(
-    `https://blob.vercel-storage.com?prefix=${COUNTER_PATH}`,
+export async function writeCounter(index: number): Promise<void> {
+  // Supprimer les anciens blobs de compteur
+  const listRes = await fetch(
+    `https://blob.vercel-storage.com?prefix=${PREFIX}&limit=20`,
     { headers: { Authorization: `Bearer ${TOKEN}` } }
   );
-  if (!res.ok) return;
-  const { blobs } = await res.json();
-  if (!blobs?.length) return;
-  await fetch("https://blob.vercel-storage.com", {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${TOKEN}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({ urls: blobs.map((b: { url: string }) => b.url) }),
-  });
-}
-
-async function writeCounter(index: number): Promise<void> {
-  await deleteCounterBlobs();
-  await fetch(`https://blob.vercel-storage.com/${COUNTER_PATH}`, {
+  if (listRes.ok) {
+    const { blobs } = await listRes.json();
+    if (blobs?.length) {
+      await fetch("https://blob.vercel-storage.com", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${TOKEN}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ urls: (blobs as { url: string }[]).map((b) => b.url) }),
+      });
+    }
+  }
+  // Écrire le nouveau compteur — la valeur est dans le pathname, pas le contenu
+  await fetch(`https://blob.vercel-storage.com/${PREFIX}${index}`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${TOKEN}`,
       "x-api-version": "7",
       "x-vercel-blob-access": "private",
-      "content-type": "application/json",
+      "content-type": "text/plain",
     },
-    body: JSON.stringify({ index }),
+    body: String(index),
   });
-}
-
-// Retourne l'index courant et sauvegarde le suivant en Blob.
-export async function getAndIncrementIndex(total: number): Promise<number> {
-  const current = await readCounter();
-  const safe = current % total; // reste valide si des médias ont été supprimés
-  const next = (safe + 1) % total;
-  await writeCounter(next);
-  return safe;
 }
