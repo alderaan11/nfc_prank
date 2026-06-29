@@ -1,14 +1,31 @@
 #!/usr/bin/env node
 // Usage: node scripts/add-media.js <chemin-fichier> [nom-optionnel]
-// Exemple: node scripts/add-media.js ~/Downloads/mon-meme.jpg "Mon meme"
-// Tous les médias (images ET vidéos) vont dans public/media/
+// Exemple: node scripts/add-media.js ~/Downloads/mon-meme.jpg
+// Upload direct vers Vercel Blob — rien dans git, disponible immédiatement.
 
 const fs = require("fs");
 const path = require("path");
-const { execSync } = require("child_process");
+const https = require("https");
+
+// Charge .env.local pour récupérer BLOB_READ_WRITE_TOKEN en local
+function loadEnvLocal() {
+  const envPath = path.join(__dirname, "../.env.local");
+  if (!fs.existsSync(envPath)) return;
+  for (const line of fs.readFileSync(envPath, "utf8").split("\n")) {
+    const m = line.match(/^([A-Z_][A-Z0-9_]*)="?([^"\n]*)"?/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+  }
+}
+
+loadEnvLocal();
+
+const TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
+if (!TOKEN) {
+  console.error("BLOB_READ_WRITE_TOKEN manquant. Lance `vercel env pull .env.local` dans apps/backend.");
+  process.exit(1);
+}
 
 const [, , filePath, customName] = process.argv;
-
 if (!filePath) {
   console.error("Usage: node scripts/add-media.js <chemin-fichier> [nom]");
   process.exit(1);
@@ -26,61 +43,60 @@ if (!fs.existsSync(resolvedPath)) {
 const ext = path.extname(resolvedPath).toLowerCase();
 const videoExts = [".mp4", ".webm", ".mov", ".avi"];
 const imageExts = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"];
+const mimeMap = {
+  ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+  ".png": "image/png", ".gif": "image/gif",
+  ".webp": "image/webp", ".avif": "image/avif",
+  ".mp4": "video/mp4", ".webm": "video/webm",
+  ".mov": "video/quicktime", ".avi": "video/x-msvideo",
+};
 
-const type = videoExts.includes(ext)
-  ? "video"
-  : imageExts.includes(ext)
-  ? "image"
-  : null;
-
-if (!type) {
+if (!videoExts.includes(ext) && !imageExts.includes(ext)) {
   console.error(`Extension non supportée: ${ext}`);
-  console.error(`Images: ${imageExts.join(", ")}`);
-  console.error(`Vidéos: ${videoExts.join(", ")}`);
   process.exit(1);
 }
 
 const filename = path.basename(resolvedPath);
-const name = customName || path.basename(resolvedPath, ext);
+const contentType = mimeMap[ext] || "application/octet-stream";
+const blobPathname = `prank-media/${filename}`;
 
-// Tout va dans public/media/ — pas de séparation images/vidéos
-const destDir = path.join(__dirname, "../public/media");
-fs.mkdirSync(destDir, { recursive: true });
+console.log(`Uploading ${filename} → Vercel Blob...`);
 
-const destPath = path.join(destDir, filename);
-fs.copyFileSync(resolvedPath, destPath);
+const fileBuffer = fs.readFileSync(resolvedPath);
+const url = new URL(`https://blob.vercel-storage.com/${blobPathname}`);
 
-const urlPath = `/media/${filename}`;
+const options = {
+  method: "PUT",
+  hostname: url.hostname,
+  path: url.pathname,
+  headers: {
+    Authorization: `Bearer ${TOKEN}`,
+    "x-api-version": "7",
+    "x-vercel-blob-access": "private",
+    "content-type": contentType,
+    "content-length": fileBuffer.length,
+  },
+};
 
-const jsonPath = path.join(__dirname, "../data/media.json");
-const media = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+const req = https.request(options, (res) => {
+  let body = "";
+  res.on("data", (chunk) => (body += chunk));
+  res.on("end", () => {
+    if (res.statusCode !== 200) {
+      console.error(`Upload échoué (${res.statusCode}):`, body);
+      process.exit(1);
+    }
+    const data = JSON.parse(body);
+    console.log(`✓ Uploadé: ${filename}`);
+    console.log(`  URL Blob: ${data.url}`);
+    console.log(`\n✓ Disponible immédiatement sur https://nfc-hihi-fun.vercel.app/r`);
+  });
+});
 
-if (media.find((m) => m.path === urlPath)) {
-  console.log(`⚠  ${filename} est déjà dans l'index — mise à jour ignorée.`);
-} else {
-  media.push({ type, path: urlPath, name });
-  fs.writeFileSync(jsonPath, JSON.stringify(media, null, 2) + "\n");
-  console.log(`✓ Ajouté dans l'index: ${filename} (${type})`);
-}
+req.on("error", (e) => {
+  console.error("Erreur réseau:", e.message);
+  process.exit(1);
+});
 
-const repoRoot = path.join(__dirname, "../../..");
-
-try {
-  execSync(
-    `git -C "${repoRoot}" add apps/backend/public/media apps/backend/data/media.json`,
-    { stdio: "inherit" }
-  );
-  execSync(
-    `git -C "${repoRoot}" commit -m "media: add ${filename}"`,
-    { stdio: "inherit" }
-  );
-  execSync(`git -C "${repoRoot}" push`, { stdio: "inherit" });
-  console.log(
-    "\n✓ Pushé → Vercel va redéployer, le média sera disponible dans ~1 min."
-  );
-} catch {
-  console.log(
-    "\n⚠  Fichier copié et index mis à jour, mais git push a échoué."
-  );
-  console.log('   Lance "git add . && git commit -m media && git push" manuellement.');
-}
+req.write(fileBuffer);
+req.end();
