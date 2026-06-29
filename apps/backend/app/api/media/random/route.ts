@@ -41,9 +41,11 @@ export async function GET(req: NextRequest) {
   const type = VIDEO_EXTS.has(ext) ? "video" : "image";
   const name = blob.pathname.replace(MEDIA_PREFIX, "").replace(/-[A-Za-z0-9]+(\.[^.]+)$/, "$1");
 
-  // downloadUrl = URL présignée valide ~1h, accessible sans Bearer par le navigateur
+  // Proxy via /api/media/serve — le Bearer token ne sort jamais côté client
+  const serveUrl = `${req.nextUrl.origin}/api/media/serve?url=${encodeURIComponent(blob.url)}`;
+
   return NextResponse.json(
-    { type, url: blob.downloadUrl, name },
+    { type, url: serveUrl, name },
     { headers: corsHeaders(origin) }
   );
 }
