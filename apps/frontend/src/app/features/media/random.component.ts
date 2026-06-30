@@ -1,5 +1,5 @@
 import {
-  Component, OnInit, OnDestroy, signal, ElementRef, inject
+  Component, OnInit, signal, ElementRef, inject
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
@@ -17,11 +17,10 @@ interface MediaResponse {
   imports: [CommonModule],
   templateUrl: './random.component.html',
 })
-export class RandomMediaComponent implements OnInit, OnDestroy {
+export class RandomMediaComponent implements OnInit {
   private http = inject(HttpClient);
   private el = inject(ElementRef);
 
-  // Séparation des retry : API (compteur) vs proxy (image/vidéo)
   private apiRetries = 0;
   private mediaRetries = 0;
   private currentUrl = '';
@@ -31,15 +30,8 @@ export class RandomMediaComponent implements OnInit, OnDestroy {
   loading = signal(true);
   needsTap = signal(false);
 
-  private clickHandler = () => this.activateSound();
-
   ngOnInit() {
     this.loadNext();
-  }
-
-  ngOnDestroy() {
-    document.removeEventListener('click', this.clickHandler);
-    document.removeEventListener('touchstart', this.clickHandler);
   }
 
   loadNext() {
@@ -55,15 +47,9 @@ export class RandomMediaComponent implements OnInit, OnDestroy {
         this.currentUrl = m.url;
         this.media.set(m);
         this.loading.set(false);
-        if (m.type === 'video') {
-          this.needsTap.set(true);
-          document.addEventListener('click', this.clickHandler, { once: true });
-          document.addEventListener('touchstart', this.clickHandler, { once: true });
-        }
+        if (m.type === 'video') this.needsTap.set(true);
       },
       error: () => {
-        // Erreur API → retry sans incrémenter le compteur (même ?_t suffit pas,
-        // mais l'API gère l'idempotence côté serveur)
         if (this.apiRetries < 2) {
           this.apiRetries++;
           setTimeout(() => this.loadNext(), 800);
@@ -75,38 +61,39 @@ export class RandomMediaComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Erreur de chargement image/vidéo (proxy) — on réessaie la MÊME URL,
-  // pas question d'appeler loadNext() qui incrémenterait le compteur.
+  // Appelé par (click) sur le bouton overlay — événement "trusted" sur iOS
+  activateSound() {
+    this.needsTap.set(false);
+    const vid = this.el.nativeElement.querySelector('video') as HTMLVideoElement | null;
+    if (!vid) return;
+
+    // iOS Safari : muted doit être changé synchroniquement dans un click handler
+    vid.muted = false;
+    vid.volume = 1;
+
+    // play() retourne une Promise sur les navigateurs modernes
+    const p = vid.play();
+    if (p) {
+      p.catch(() => {
+        // Fallback iOS : reload de la source sans muted puis re-play
+        const src = vid.src;
+        vid.src = '';
+        vid.muted = false;
+        vid.src = src;
+        vid.play().catch(() => {});
+      });
+    }
+  }
+
   onMediaError() {
     if (this.mediaRetries < 2) {
       this.mediaRetries++;
       const url = this.currentUrl;
-      // Force le navigateur à re-fetcher en réinitialisant le src
       this.media.update(m => m ? { ...m, url: '' } : null);
       setTimeout(() => this.media.update(m => m ? { ...m, url } : null), 400);
     } else {
       this.error.set('Erreur de chargement');
       this.loading.set(false);
     }
-  }
-
-  private activateSound() {
-    this.needsTap.set(false);
-    const vid = this.el.nativeElement.querySelector('video') as HTMLVideoElement | null;
-    if (!vid) return;
-    vid.muted = false;
-    vid.volume = 1;
-    if (vid.paused) vid.play();
-    try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-      const source = ctx.createMediaElementSource(vid);
-      const gain = ctx.createGain();
-      gain.gain.value = 2.5;
-      source.connect(gain);
-      gain.connect(ctx.destination);
-      ctx.resume();
-    } catch { }
   }
 }

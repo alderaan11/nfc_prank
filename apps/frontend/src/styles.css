@@ -239,6 +239,11 @@ a:hover { text-decoration: underline; }
   position: fixed; inset: 0;
   z-index: 10;
   cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+  -webkit-appearance: none;
+  appearance: none;
 }
 .media-image {
   max-width: 100%;
