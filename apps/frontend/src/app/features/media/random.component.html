@@ -22,7 +22,9 @@
           (error)="onMediaError()"
         ></video>
         @if (needsTap()) {
-          <button class="tap-overlay" (click)="activateSound()"></button>
+          <button class="tap-overlay" (click)="activateSound()">
+            <span class="tap-hint">🔊 Tap for sound</span>
+          </button>
         }
       }
 
